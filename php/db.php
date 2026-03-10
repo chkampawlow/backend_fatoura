@@ -31,11 +31,11 @@ function db(): mysqli
         return $conn;
     }
 
-    $host = $_ENV['DB_HOST'] ?? '127.0.0.1';
-    $user = $_ENV['DB_USER'] ?? 'root';
-    $pass = $_ENV['DB_PASS'] ?? '';
-    $name = $_ENV['DB_NAME'] ?? '';
-    $port = (int)($_ENV['DB_PORT'] ?? 3306);
+    $host = $_ENV['DB_HOST'] ?? getenv('MYSQLHOST');
+    $user = $_ENV['DB_USER'] ?? getenv('MYSQLUSER');
+    $pass = $_ENV['DB_PASS'] ?? getenv('MYSQLPASSWORD');
+    $name = $_ENV['DB_NAME'] ?? getenv('MYSQLDATABASE');
+    $port = (int)($_ENV['DB_PORT'] ?? getenv('MYSQLPORT'));
 
     try {
 
@@ -49,7 +49,8 @@ function db(): mysqli
 
         jsonResponse([
             "success" => false,
-            "message" => "Database connection failed"
+            "message" => "Database connection failed",
+            "error" => $e->getMessage()
         ], 500);
 
         exit;
