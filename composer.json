@@ -1,0 +1,12 @@
+{
+    "name": "chkampawlow/facturation_api",
+    "authors": [
+        {
+            "name": "chkampawlow",
+            "email": "medkarim.checambou@esprit.tn"
+        }
+    ],
+    "require": {
+        "firebase/php-jwt": "^7.0"
+    }
+}
