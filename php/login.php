@@ -24,7 +24,7 @@ try {
     $conn = db();
 
     $stmt = $conn->prepare("
-        SELECT id, first_name, last_name, email, password_hash
+        SELECT id, email, password_hash
         FROM users
         WHERE email = ?
         LIMIT 1
@@ -62,8 +62,6 @@ try {
         "refresh_expires_in" => $refreshExpiresIn,
         "user" => [
             "id" => (int)$user['id'],
-            "first_name" => $user['first_name'],
-            "last_name" => $user['last_name'],
             "email" => $user['email']
         ]
     ]);

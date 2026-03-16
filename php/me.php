@@ -9,11 +9,12 @@ try {
     $conn = db();
 
     $stmt = $conn->prepare("
-        SELECT id, email, first_name, last_name, fiscal_id
+        SELECT id, email, fiscal_id, organization_name, fax, address, website
         FROM users
         WHERE id = ?
         LIMIT 1
     ");
+
     $stmt->bind_param("i", $authUser->id);
     $stmt->execute();
 
@@ -32,9 +33,11 @@ try {
         "user" => [
             "id" => (int)$user['id'],
             "email" => $user['email'],
-            "first_name" => $user['first_name'],
-            "last_name" => $user['last_name'],
-            "fiscal_id" => $user['fiscal_id'] ?? ""
+            "organization_name" => $user['organization_name'] ?? "",
+            "fiscal_id" => $user['fiscal_id'] ?? "",
+            "fax" => $user['fax'] ?? "",
+            "address" => $user['address'] ?? "",
+            "website" => $user['website'] ?? ""
         ]
     ]);
 

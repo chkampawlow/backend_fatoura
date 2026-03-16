@@ -9,20 +9,18 @@ try {
         throw new Exception("Invalid JSON body.");
     }
 
-    $first_name = trim($data['first_name'] ?? '');
-    $last_name = trim($data['last_name'] ?? '');
+
     $organization_name = trim($data['organization_name'] ?? '');
     $fiscal_id = strtoupper(trim($data['fiscal_id'] ?? ''));
     $email = strtolower(trim($data['email'] ?? ''));
-    $phone = trim($data['phone'] ?? '');
+    $phone = preg_replace('/\s+/', ' ', trim($data['phone'] ?? ''));
     $password = $data['password'] ?? '';
     $confirm_password = $data['confirm_password'] ?? '';
 
     if (
-        $first_name === '' ||
-        $last_name === '' ||
         $fiscal_id === '' ||
         $email === '' ||
+        $phone === '' ||
         $password === '' ||
         $confirm_password === ''
     ) {
@@ -34,11 +32,11 @@ try {
     }
 
     if (!preg_match('/^[0-9]{7}[A-Z]{3}[0-9]{3}$/', $fiscal_id)) {
-        throw new Exception("Invalid Tunisian fiscal ID format. Example: 1234567ABC123");
+        throw new Exception("Invalid fiscal ID.");
     }
 
-    if ($phone !== '' && !preg_match('/^\+216\s?\d{2}\s?\d{3}\s?\d{3}$/', $phone)) {
-        throw new Exception("Invalid Tunisian phone number. Example: +216 12 345 678");
+    if (!preg_match('/^\+\d{1,3}\s\d{6,12}$/', $phone)) {
+        throw new Exception("Invalid phone number. Example: +216 20123456");
     }
 
     if (strlen($password) < 6) {
@@ -65,20 +63,20 @@ try {
 
     $stmt = $conn->prepare("
         INSERT INTO users (
-            first_name,
-            last_name,
             organization_name,
             fiscal_id,
             email,
             phone,
             password_hash
-        ) VALUES (?, ?, ?, ?, ?, ?, ?)
+        ) VALUES (?, ?, ?, ?, ?)
     ");
 
+    if (!$stmt) {
+        throw new Exception("Failed to prepare signup query: " . $conn->error);
+    }
+
     $stmt->bind_param(
-        "sssssss",
-        $first_name,
-        $last_name,
+        "sssss",
         $organization_name,
         $fiscal_id,
         $email,
@@ -87,6 +85,11 @@ try {
     );
 
     $stmt->execute();
+
+    if ($stmt->error) {
+        throw new Exception("Failed to create account: " . $stmt->error);
+    }
+
     $userId = $stmt->insert_id;
     $stmt->close();
 

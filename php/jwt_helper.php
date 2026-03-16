@@ -21,8 +21,6 @@ function generateJwt(array $user, int $expiresInSeconds = 86400): string
         'user' => [
             'id' => (int)$user['id'],
             'email' => $user['email'] ?? '',
-            'first_name' => $user['first_name'] ?? '',
-            'last_name' => $user['last_name'] ?? '',
         ]
     ];
 
@@ -65,8 +63,6 @@ function generateRefreshJwt(array $user, int $expiresInSeconds = 2592000): strin
         'user' => [
             'id' => (int)$user['id'],
             'email' => $user['email'] ?? '',
-            'first_name' => $user['first_name'] ?? '',
-            'last_name' => $user['last_name'] ?? '',
         ]
     ];
 
