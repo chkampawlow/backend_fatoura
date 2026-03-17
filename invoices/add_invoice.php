@@ -38,7 +38,6 @@ try {
 
     $conn = db();
 
-    // Verify client belongs to logged user
     $checkClient = $conn->prepare("
         SELECT id, name
         FROM clients

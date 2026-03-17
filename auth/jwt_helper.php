@@ -5,7 +5,6 @@ require_once __DIR__ . '/env.php';
 use Firebase\JWT\JWT;
 use Firebase\JWT\Key;
 
-// Load .env only if JWT_SECRET is not already loaded
 if (empty($_ENV['JWT_SECRET'])) {
     loadEnv(__DIR__ . '/../.env');
 }

@@ -47,7 +47,6 @@ try {
 
     $conn = db();
 
-    // Check that invoice exists and belongs to logged user
     $check = $conn->prepare("
         SELECT id, invoice, invoice_date
         FROM erp_invoices
@@ -66,7 +65,6 @@ try {
     $invoice = (string)$invoiceRow['invoice'];
     $invoice_date = $invoiceRow['invoice_date'];
 
-    // Recompute values server-side
     $subtotal = $qty * $price;
     if ($discount > 0) {
         $subtotal -= ($subtotal * ($discount / 100));
@@ -112,7 +110,6 @@ try {
     $itemId = $stmt->insert_id;
     $stmt->close();
 
-    // Recompute invoice totals
     $sumStmt = $conn->prepare("
         SELECT
             COALESCE(SUM(subtotal), 0) AS sum_subtotal,

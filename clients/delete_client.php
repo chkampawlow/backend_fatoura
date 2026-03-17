@@ -39,7 +39,6 @@ try {
     if (function_exists('db')) {
         $conn = db();
     } elseif (isset($conn) && $conn instanceof mysqli) {
-        // use existing $conn from db.php
     } elseif (isset($mysqli) && $mysqli instanceof mysqli) {
         $conn = $mysqli;
     } else {

@@ -42,7 +42,6 @@ try {
         ], 401);
     }
 
-    // short-lived access token
     $accessExpiresIn = 60 * 15; // 15 minutes
 
     // longer-lived refresh token

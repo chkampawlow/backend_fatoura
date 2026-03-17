@@ -21,7 +21,6 @@ try {
 
     $conn = db();
 
-    // Verify item exists and belongs to an invoice owned by logged user
     $check = $conn->prepare("
         SELECT ii.id, ii.invoice_id
         FROM erp_invoice_items ii
@@ -45,7 +44,6 @@ try {
     $stmt->execute();
     $stmt->close();
 
-    // Recompute invoice totals after delete
     $sumStmt = $conn->prepare("
         SELECT
             COALESCE(SUM(subtotal), 0) AS sum_subtotal,

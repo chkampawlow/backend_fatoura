@@ -21,7 +21,6 @@ try {
 
     $conn = db();
 
-    // Verify invoice belongs to logged user
     $check = $conn->prepare("
         SELECT id
         FROM erp_invoices

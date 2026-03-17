@@ -28,7 +28,6 @@ try {
 
     $conn = db();
 
-    // Check that invoice exists and belongs to logged user
     $check = $conn->prepare("
         SELECT id, invoice, invoice_date
         FROM erp_invoices
@@ -126,7 +125,6 @@ try {
 
     $stmt->close();
 
-    // Recompute invoice totals after insert
     $sumStmt = $conn->prepare("
         SELECT
             COALESCE(SUM(subtotal), 0) AS sum_subtotal,
