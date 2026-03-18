@@ -1,9 +1,18 @@
 <?php
-require_once __DIR__ . '/response.php';
-require_once __DIR__ . '/db.php';
-require_once __DIR__ . '/auth_required.php';
+header('Content-Type: application/json');
+
+require_once __DIR__ . '/../config/response.php';
+require_once __DIR__ . '/../config/db.php';
+require_once __DIR__ . '/../auth/auth_required.php';
 
 try {
+    if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+        jsonResponse([
+            "success" => false,
+            "message" => "Method not allowed. Use POST."
+        ], 405);
+        exit;
+    }
     $authUser = requireAuth();
     $user_id = (int)$authUser->id;
 

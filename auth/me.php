@@ -1,10 +1,10 @@
 <?php
+
 require_once __DIR__ . '/auth_required.php';
-require_once __DIR__ . '/response.php';
-require_once __DIR__ . '/db.php';
+require_once __DIR__ . '/../config/response.php';
+require_once __DIR__ . '/../config/db.php';
 
 try {
-
     $authUser = requireAuth();
     $conn = db();
 
@@ -26,6 +26,7 @@ try {
             "success" => false,
             "message" => "User not found."
         ], 404);
+        exit;
     }
 
     jsonResponse([
@@ -42,11 +43,8 @@ try {
     ]);
 
 } catch (Throwable $e) {
-
     jsonResponse([
         "success" => false,
         "message" => $e->getMessage()
     ], 401);
-
 }
-?>

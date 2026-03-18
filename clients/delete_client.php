@@ -9,8 +9,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     exit;
 }
 
-require_once __DIR__ . '/response.php';
-require_once __DIR__ . '/db.php';
+require_once __DIR__ . '/../config/response.php';
+require_once __DIR__ . '/../config/db.php';
+require_once __DIR__ . '/../auth/auth_required.php';
 
 try {
     if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
@@ -18,7 +19,11 @@ try {
             "success" => false,
             "message" => "Method not allowed"
         ], 405);
+        exit;
     }
+
+    $authUser = requireAuth();
+    $user_id = (int)$authUser->id;
 
     $raw = file_get_contents("php://input");
     $data = json_decode($raw, true);
@@ -36,21 +41,14 @@ try {
         ], 400);
     }
 
-    if (function_exists('db')) {
-        $conn = db();
-    } elseif (isset($conn) && $conn instanceof mysqli) {
-    } elseif (isset($mysqli) && $mysqli instanceof mysqli) {
-        $conn = $mysqli;
-    } else {
-        throw new Exception("Database connection unavailable");
-    }
+    $conn = db();
 
-    $stmt = $conn->prepare("DELETE FROM clients WHERE id = ?");
+    $stmt = $conn->prepare("DELETE FROM clients WHERE id = ? AND user_id = ?");
     if (!$stmt) {
         throw new Exception("Failed to prepare delete statement");
     }
 
-    $stmt->bind_param("i", $id);
+    $stmt->bind_param("ii", $id, $user_id);
 
     if (!$stmt->execute()) {
         throw new Exception("Failed to delete client");
@@ -60,7 +58,7 @@ try {
         $stmt->close();
         jsonResponse([
             "success" => false,
-            "message" => "Client not found"
+            "message" => "Client not found or access denied"
         ], 404);
     }
 

@@ -1,6 +1,6 @@
 <?php
 require_once __DIR__ . '/../vendor/autoload.php';
-require_once __DIR__ . '/env.php';
+require_once __DIR__ . '/../config/env.php';
 
 use Firebase\JWT\JWT;
 use Firebase\JWT\Key;
@@ -50,6 +50,7 @@ function getBearerToken(): ?string
 
     return null;
 }
+
 function generateRefreshJwt(array $user, int $expiresInSeconds = 2592000): string
 {
     $now = time();
@@ -67,4 +68,3 @@ function generateRefreshJwt(array $user, int $expiresInSeconds = 2592000): strin
 
     return JWT::encode($payload, $_ENV['JWT_SECRET'], 'HS256');
 }
-?>

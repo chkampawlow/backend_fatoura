@@ -1,9 +1,23 @@
 <?php
-require_once __DIR__ . '/db.php';
+
+header('Content-Type: application/json');
+ini_set('display_errors', 1);
+ini_set('display_startup_errors', 1);
+error_reporting(E_ALL);
+
+require_once __DIR__ . '/../config/db.php';
+require_once __DIR__ . '/../config/response.php';
 require_once __DIR__ . '/jwt_helper.php';
-require_once __DIR__ . '/response.php';
 
 try {
+    if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+        jsonResponse([
+            "success" => false,
+            "message" => "Method not allowed. Use POST."
+        ], 405);
+        exit;
+    }
+
     $data = json_decode(file_get_contents("php://input"), true);
 
     if (!is_array($data)) {
@@ -19,6 +33,7 @@ try {
             "success" => false,
             "message" => "Email and password are required."
         ], 400);
+        exit;
     }
 
     $conn = db();
@@ -40,11 +55,11 @@ try {
             "success" => false,
             "message" => "Invalid email or password."
         ], 401);
+        exit;
     }
 
     $accessExpiresIn = 60 * 15; // 15 minutes
 
-    // longer-lived refresh token
     $refreshExpiresIn = $remember_me
         ? (60 * 60 * 24 * 30) // 30 days
         : (60 * 60 * 24 * 7); // 7 days
@@ -70,4 +85,3 @@ try {
         "message" => $e->getMessage()
     ], 500);
 }
-?>

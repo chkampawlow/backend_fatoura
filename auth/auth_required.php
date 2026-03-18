@@ -1,6 +1,9 @@
 <?php
+
+header('Content-Type: application/json');
+
 require_once __DIR__ . '/jwt_helper.php';
-require_once __DIR__ . '/response.php';
+require_once __DIR__ . '/../config/response.php';
 
 function requireAuth(): object
 {
