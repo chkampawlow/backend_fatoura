@@ -5,7 +5,9 @@ require_once __DIR__ . '/../config/response.php';
 require_once __DIR__ . '/../config/db.php';
 require_once __DIR__ . '/../auth/auth_required.php';
 require_once __DIR__ . '/../static_token.php';
+
 requireStaticToken();
+
 try {
     if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
         jsonResponse([
@@ -14,6 +16,7 @@ try {
         ], 405);
         exit;
     }
+
     $authUser = requireAuth();
     $user_id = (int)$authUser->id;
 
@@ -23,16 +26,16 @@ try {
         throw new Exception("Invalid JSON body");
     }
 
-    $invoice_id = isset($data['invoice_id']) ? (int)$data['invoice_id'] : 0;
+    $invoice_id = isset($data['id']) ? (int)$data['id'] : 0;
 
     if ($invoice_id <= 0) {
-        throw new Exception("Invalid invoice_id");
+        throw new Exception("Invalid invoice id");
     }
 
     $conn = db();
 
     $check = $conn->prepare("
-        SELECT id
+        SELECT id, invoice
         FROM erp_invoices
         WHERE id = ? AND user_id = ?
         LIMIT 1
@@ -46,39 +49,34 @@ try {
         throw new Exception("Invoice not found or not allowed");
     }
 
-    $stmt = $conn->prepare("
-        SELECT
-            COALESCE(SUM(subtotal), 0) AS sumHT,
-            COALESCE(SUM(montant_tva), 0) AS sumTVA,
-            COALESCE(SUM(subtotalTTC), 0) AS sumTTC
-        FROM erp_invoice_items
+    // Delete invoice items first if they depend on invoice_id
+    $deleteItems = $conn->prepare("
+        DELETE FROM erp_invoice_items
         WHERE invoice_id = ?
     ");
-    $stmt->bind_param("i", $invoice_id);
-    $stmt->execute();
-    $result = $stmt->get_result()->fetch_assoc();
-    $stmt->close();
+    $deleteItems->bind_param("i", $invoice_id);
+    $deleteItems->execute();
+    $deleteItems->close();
 
-    $sumHT = (float)$result['sumHT'];
-    $sumTVA = (float)$result['sumTVA'];
-    $sumTTC = (float)$result['sumTTC'];
-
-    $stmt2 = $conn->prepare("
-        UPDATE erp_invoices
-        SET subtotal = ?, montant_tva = ?, total = ?, subtotal_ttc = ?
+    // Delete invoice
+    $deleteInvoice = $conn->prepare("
+        DELETE FROM erp_invoices
         WHERE id = ? AND user_id = ?
     ");
-    $stmt2->bind_param("ddddii", $sumHT, $sumTVA, $sumTTC, $sumTTC, $invoice_id, $user_id);
-    $stmt2->execute();
-    $stmt2->close();
+    $deleteInvoice->bind_param("ii", $invoice_id, $user_id);
+    $deleteInvoice->execute();
+    $affected = $deleteInvoice->affected_rows;
+    $deleteInvoice->close();
+
+    if ($affected <= 0) {
+        throw new Exception("Failed to delete invoice");
+    }
 
     jsonResponse([
         "success" => true,
-        "invoice_id" => $invoice_id,
-        "subtotal" => $sumHT,
-        "montant_tva" => $sumTVA,
-        "subtotal_ttc" => $sumTTC,
-        "total" => $sumTTC
+        "id" => $invoice_id,
+        "invoice" => $invoiceRow['invoice'],
+        "message" => "Invoice deleted successfully"
     ]);
 } catch (Throwable $e) {
     jsonResponse([

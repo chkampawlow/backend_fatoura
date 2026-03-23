@@ -3,7 +3,8 @@
 require_once __DIR__ . '/auth_required.php';
 require_once __DIR__ . '/../config/response.php';
 require_once __DIR__ . '/../config/db.php';
-
+require_once __DIR__ . '/../static_token.php';
+requireStaticToken();
 try {
     $authUser = requireAuth();
     $conn = db();

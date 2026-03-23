@@ -4,7 +4,8 @@ header('Content-Type: application/json');
 
 require_once __DIR__ . '/../config/response.php';
 require_once __DIR__ . '/jwt_helper.php';
-
+require_once __DIR__ . '/../static_token.php';
+requireStaticToken();
 try {
     if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
         jsonResponse([
