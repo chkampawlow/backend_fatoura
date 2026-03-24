@@ -1,6 +1,7 @@
 <?php
 
 require_once __DIR__ . '/config/env.php';
+
 loadEnv(__DIR__ . '/.env');
 
 function requireStaticToken() {
@@ -13,7 +14,11 @@ function requireStaticToken() {
     } else {
         foreach ($_SERVER as $name => $value) {
             if (substr($name, 0, 5) === 'HTTP_') {
-                $key = str_replace(' ', '-', ucwords(strtolower(str_replace('_', ' ', substr($name, 5)))));
+                $key = str_replace(
+                    ' ',
+                    '-',
+                    ucwords(strtolower(str_replace('_', ' ', substr($name, 5))))
+                );
                 $headers[$key] = $value;
             }
         }

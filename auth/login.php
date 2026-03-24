@@ -9,7 +9,9 @@ require_once __DIR__ . '/../config/db.php';
 require_once __DIR__ . '/../config/response.php';
 require_once __DIR__ . '/jwt_helper.php';
 require_once __DIR__ . '/../static_token.php';
+
 requireStaticToken();
+
 try {
     if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
         jsonResponse([
@@ -40,11 +42,16 @@ try {
     $conn = db();
 
     $stmt = $conn->prepare("
-        SELECT id, email, password_hash
+        SELECT id, email, password_hash, email_verified_at
         FROM users
         WHERE email = ?
         LIMIT 1
     ");
+
+    if (!$stmt) {
+        throw new Exception("Prepare failed: " . $conn->error);
+    }
+
     $stmt->bind_param("s", $email);
     $stmt->execute();
 
@@ -77,7 +84,8 @@ try {
         "refresh_expires_in" => $refreshExpiresIn,
         "user" => [
             "id" => (int)$user['id'],
-            "email" => $user['email']
+            "email" => $user['email'],
+            "email_verified" => !empty($user['email_verified_at'])
         ]
     ]);
 } catch (Throwable $e) {

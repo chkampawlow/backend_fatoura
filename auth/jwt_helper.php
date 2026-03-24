@@ -33,22 +33,18 @@ function decodeJwt(string $token): object
 
 function getBearerToken(): ?string
 {
-    $headers = $_SERVER['HTTP_AUTHORIZATION'] ?? $_SERVER['Authorization'] ?? null;
+    $token = $_SERVER['HTTP_X_ACCESS_TOKEN'] ?? null;
 
-    if (!$headers && function_exists('apache_request_headers')) {
+    if (!$token && function_exists('apache_request_headers')) {
         $requestHeaders = apache_request_headers();
-        $headers = $requestHeaders['Authorization'] ?? $requestHeaders['authorization'] ?? null;
+        $token = $requestHeaders['X-Access-Token'] ?? $requestHeaders['x-access-token'] ?? null;
     }
 
-    if (!$headers) {
+    if (!$token) {
         return null;
     }
 
-    if (preg_match('/Bearer\s+(\S+)/i', $headers, $matches)) {
-        return $matches[1];
-    }
-
-    return null;
+    return trim($token);
 }
 
 function generateRefreshJwt(array $user, int $expiresInSeconds = 2592000): string
