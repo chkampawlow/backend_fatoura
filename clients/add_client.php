@@ -4,9 +4,12 @@ header('Content-Type: application/json');
 
 require_once __DIR__ . '/../config/response.php';
 require_once __DIR__ . '/../config/db.php';
+require_once __DIR__ . '/../config/validator.php';
 require_once __DIR__ . '/../auth/auth_required.php';
 require_once __DIR__ . '/../static_token.php';
+
 requireStaticToken();
+
 try {
     if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
         jsonResponse([
@@ -19,27 +22,31 @@ try {
     $authUser = requireAuth();
     $user_id = (int)$authUser->id;
 
-    $data = json_decode(file_get_contents("php://input"), true);
+    $data = requireJsonBody();
 
-    if (!is_array($data)) {
-        throw new Exception("Invalid JSON body.");
+    $type = getRequiredString($data, 'type', 'Type');
+    $name = getOptionalString($data, 'name');
+    $email = strtolower(getOptionalString($data, 'email'));
+    $phone = preg_replace('/\s+/', ' ', getOptionalString($data, 'phone'));
+    $address = getOptionalString($data, 'address');
+    $fiscalId = strtoupper(getOptionalString($data, 'fiscalId'));
+    $cin = getOptionalString($data, 'cin');
+
+    validateEnum($type, ['company', 'individual'], 'Type');
+
+    if ($name !== '') {
+        validateMaxLength($name, 255, 'Name');
     }
 
-    $type = trim($data["type"] ?? "");
-    $name = trim($data["name"] ?? "");
-    $email = trim($data["email"] ?? "");
-    $phone = trim($data["phone"] ?? "");
-    $address = trim($data["address"] ?? "");
-    $fiscalId = trim($data["fiscalId"] ?? "");
-    $cin = trim($data["cin"] ?? "");
+    validateMaxLength($email, 255, 'Email');
+    validateMaxLength($phone, 20, 'Phone');
+    validateMaxLength($address, 255, 'Address');
+    validateMaxLength($fiscalId, 13, 'Fiscal ID');
+    validateMaxLength($cin, 8, 'CIN');
 
-    if ($type === "" || $name === "") {
-        throw new Exception("type and name are required");
-    }
-
-    if ($type !== "company" && $type !== "individual") {
-        throw new Exception("type must be either company or individual");
-    }
+    validateEmailIfPresent($email);
+    validatePhoneIfPresent($phone);
+    validateAddressIfPresent($address);
 
     if ($type === "company" && $fiscalId === "") {
         throw new Exception("fiscalId is required for company");
@@ -47,6 +54,14 @@ try {
 
     if ($type === "individual" && $cin === "") {
         throw new Exception("cin is required for individual");
+    }
+
+    if ($fiscalId !== '') {
+        validateFiscalId($fiscalId);
+    }
+
+    if ($cin !== '') {
+        validateCin($cin);
     }
 
     $conn = db();
@@ -65,6 +80,10 @@ try {
         VALUES (?, ?, ?, ?, ?, ?, ?, ?)
     ");
 
+    if (!$stmt) {
+        throw new Exception("Failed to prepare add client query: " . $conn->error);
+    }
+
     $stmt->bind_param(
         "isssssss",
         $user_id,
@@ -78,6 +97,11 @@ try {
     );
 
     $stmt->execute();
+
+    if ($stmt->error) {
+        throw new Exception("Failed to add client: " . $stmt->error);
+    }
+
     $newId = $conn->insert_id;
     $stmt->close();
 

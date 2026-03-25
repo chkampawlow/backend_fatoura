@@ -1,4 +1,5 @@
 <?php
+
 ini_set('display_errors', 1);
 ini_set('display_startup_errors', 1);
 error_reporting(E_ALL);
@@ -16,14 +17,21 @@ requireStaticToken();
 try {
     if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
         jsonResponse([
-            "success" => false,
-            "message" => "Method not allowed. Use POST."
+            'success' => false,
+            'message' => 'Method not allowed. Use POST.'
         ], 405);
         exit;
     }
 
     $authUser = requireAuth();
-    $userId = (int)$authUser->id;
+    $userId = (int) $authUser->id;
+
+    $data = json_decode(file_get_contents('php://input'), true);
+    if (!is_array($data)) {
+        $data = [];
+    }
+
+    $language = trim($data['language'] ?? 'en');
 
     $conn = db();
 
@@ -35,29 +43,29 @@ try {
     ");
 
     if (!$stmt) {
-        throw new Exception("Prepare failed (select user): " . $conn->error);
+        throw new Exception('Prepare failed (select user): ' . $conn->error);
     }
 
-    $stmt->bind_param("i", $userId);
+    $stmt->bind_param('i', $userId);
     $stmt->execute();
     $user = $stmt->get_result()->fetch_assoc();
     $stmt->close();
 
     if (!$user) {
-        throw new Exception("User not found");
+        throw new Exception('User not found');
     }
 
     if (!empty($user['email_verified_at'])) {
         jsonResponse([
-            "success" => true,
-            "message" => "Email already verified"
+            'success' => true,
+            'message' => 'Email already verified'
         ]);
         exit;
     }
 
     $code = str_pad((string) random_int(0, 999999), 6, '0', STR_PAD_LEFT);
     $tokenHash = hash('sha256', $code);
-    $expires = date('Y-m-d H:i:s', time() + 600); // 10 minutes
+    $expires = date('Y-m-d H:i:s', time() + 600);
     $type = 'email_verification';
 
     $deleteStmt = $conn->prepare("
@@ -66,10 +74,10 @@ try {
     ");
 
     if (!$deleteStmt) {
-        throw new Exception("Prepare failed (delete): " . $conn->error);
+        throw new Exception('Prepare failed (delete): ' . $conn->error);
     }
 
-    $deleteStmt->bind_param("is", $userId, $type);
+    $deleteStmt->bind_param('is', $userId, $type);
     $deleteStmt->execute();
     $deleteStmt->close();
 
@@ -79,32 +87,24 @@ try {
     ");
 
     if (!$insertStmt) {
-        throw new Exception("Prepare failed (insert): " . $conn->error);
+        throw new Exception('Prepare failed (insert): ' . $conn->error);
     }
 
-    $insertStmt->bind_param("isss", $userId, $tokenHash, $expires, $type);
+    $insertStmt->bind_param('isss', $userId, $tokenHash, $expires, $type);
     $insertStmt->execute();
     $insertStmt->close();
 
-    sendMailMessage(
-        $user['email'],
-        'Verify your email',
-        "<h2>Email Verification</h2>
-         <p>Your verification code is:</p>
-         <h1 style=\"letter-spacing: 4px;\">{$code}</h1>
-         <p>This code expires in 10 minutes.</p>"
-    );
+    sendVerificationCode($user['email'], $code, $language);
 
     jsonResponse([
-        "success" => true,
-        "message" => "Verification email sent"
+        'success' => true,
+        'message' => 'Verification email sent'
     ]);
-
 } catch (Throwable $e) {
     jsonResponse([
-        "success" => false,
-        "message" => $e->getMessage(),
-        "file" => $e->getFile(),
-        "line" => $e->getLine()
+        'success' => false,
+        'message' => $e->getMessage(),
+        'file' => $e->getFile(),
+        'line' => $e->getLine()
     ], 500);
 }

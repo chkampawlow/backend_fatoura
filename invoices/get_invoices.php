@@ -21,43 +21,47 @@ try {
 
     $stmt = $conn->prepare("
         SELECT 
-            id,
-            invoice,
-            custom_email,
-            custom_code,
-            invoice_date,
-            invoice_due_date,
-            subtotal,
-            montant_tva,
-            subtotal_ttc,
-            shipping,
-            discount,
-            vat,
-            total,
-            notes,
-            invoice_type,
-            status,
-            type_doc,
-            timbre,
-            date_ajout,
-            tx_retenue,
-            retenue,
-            net_retenue,
-            id_extract,
-            id_lettrage,
-            contrat_no,
-            json_finsys,
-            json_return,
-            json_return2,
-            stat_api,
-            mnt_lettre,
-            stat_ttn,
-            qr_code,
-            uuid,
-            user_id
-        FROM erp_invoices
-        WHERE user_id = ?
-        ORDER BY id DESC
+            ei.id,
+            ei.invoice,
+            ei.custom_email,
+            ei.custom_code,
+            c.name AS client_name,
+            ei.invoice_date,
+            ei.invoice_due_date,
+            ei.subtotal,
+            ei.montant_tva,
+            ei.subtotal_ttc,
+            ei.shipping,
+            ei.discount,
+            ei.vat,
+            ei.total,
+            ei.notes,
+            ei.invoice_type,
+            ei.status,
+            ei.type_doc,
+            ei.timbre,
+            ei.date_ajout,
+            ei.tx_retenue,
+            ei.retenue,
+            ei.net_retenue,
+            ei.id_extract,
+            ei.id_lettrage,
+            ei.contrat_no,
+            ei.json_finsys,
+            ei.json_return,
+            ei.json_return2,
+            ei.stat_api,
+            ei.mnt_lettre,
+            ei.stat_ttn,
+            ei.qr_code,
+            ei.uuid,
+            ei.user_id
+        FROM erp_invoices ei
+        LEFT JOIN clients c
+            ON c.id = CAST(ei.custom_code AS UNSIGNED)
+           AND c.user_id = ei.user_id
+        WHERE ei.user_id = ?
+        ORDER BY ei.id DESC
     ");
 
     $stmt->bind_param("i", $user_id);

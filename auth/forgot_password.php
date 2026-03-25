@@ -1,5 +1,9 @@
 <?php
 
+ini_set('display_errors', 1);
+ini_set('display_startup_errors', 1);
+error_reporting(E_ALL);
+
 header('Content-Type: application/json');
 
 require_once __DIR__ . '/../config/db.php';
@@ -11,71 +15,89 @@ requireStaticToken();
 
 try {
     if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
-        jsonResponse(["success" => false, "message" => "Use POST"], 405);
+        jsonResponse([
+            'success' => false,
+            'message' => 'Method not allowed. Use POST.'
+        ], 405);
         exit;
     }
 
-    $data = json_decode(file_get_contents("php://input"), true);
+    $data = json_decode(file_get_contents('php://input'), true);
+
+    if (!is_array($data)) {
+        throw new Exception('Invalid JSON body.');
+    }
+
     $email = strtolower(trim($data['email'] ?? ''));
+    $language = trim($data['language'] ?? 'en');
 
     if ($email === '') {
-        throw new Exception("Email is required");
+        throw new Exception('Email is required');
     }
 
     $conn = db();
 
-    $stmt = $conn->prepare("SELECT id, email FROM users WHERE email = ? LIMIT 1");
-    $stmt->bind_param("s", $email);
+    $stmt = $conn->prepare('SELECT id, email FROM users WHERE email = ? LIMIT 1');
+
+    if (!$stmt) {
+        throw new Exception('Prepare failed (select user): ' . $conn->error);
+    }
+
+    $stmt->bind_param('s', $email);
     $stmt->execute();
     $user = $stmt->get_result()->fetch_assoc();
     $stmt->close();
 
-    // Always success (security)
+    // Always return success for security
     if (!$user) {
         jsonResponse([
-            "success" => true,
-            "message" => "If email exists, code sent"
+            'success' => true,
+            'message' => 'If email exists, code sent'
         ]);
         exit;
     }
 
-    $code = str_pad(random_int(0, 999999), 6, '0', STR_PAD_LEFT);
+    $userId = (int) $user['id'];
+
+    $code = str_pad((string) random_int(0, 999999), 6, '0', STR_PAD_LEFT);
     $hash = hash('sha256', $code);
     $expires = date('Y-m-d H:i:s', time() + 600);
     $type = 'password_reset';
 
-    // delete old tokens
-    $del = $conn->prepare("DELETE FROM user_tokens WHERE user_id = ? AND type = ?");
-    $del->bind_param("is", $user['id'], $type);
+    $del = $conn->prepare('DELETE FROM user_tokens WHERE user_id = ? AND type = ?');
+
+    if (!$del) {
+        throw new Exception('Prepare failed (delete old tokens): ' . $conn->error);
+    }
+
+    $del->bind_param('is', $userId, $type);
     $del->execute();
     $del->close();
 
-    // insert new
-    $ins = $conn->prepare("
-        INSERT INTO user_tokens (user_id, token_hash, expires_at, type, attempts)
-        VALUES (?, ?, ?, ?, 0)
-    ");
-    $ins->bind_param("isss", $user['id'], $hash, $expires, $type);
+    $ins = $conn->prepare(
+        'INSERT INTO user_tokens (user_id, token_hash, expires_at, type, attempts)
+         VALUES (?, ?, ?, ?, 0)'
+    );
+
+    if (!$ins) {
+        throw new Exception('Prepare failed (insert token): ' . $conn->error);
+    }
+
+    $ins->bind_param('isss', $userId, $hash, $expires, $type);
     $ins->execute();
     $ins->close();
 
-    sendMailMessage(
-        $user['email'],
-        'Reset your password',
-        "<h2>Password Reset</h2>
-         <p>Your code:</p>
-         <h1>{$code}</h1>
-         <p>Expires in 10 minutes</p>"
-    );
+    sendResetCode($user['email'], $code, $language);
 
     jsonResponse([
-        "success" => true,
-        "message" => "If email exists, code sent"
+        'success' => true,
+        'message' => 'If email exists, code sent'
     ]);
-
 } catch (Throwable $e) {
     jsonResponse([
-        "success" => false,
-        "message" => $e->getMessage()
-    ], 400);
+        'success' => false,
+        'message' => $e->getMessage(),
+        'file' => $e->getFile(),
+        'line' => $e->getLine()
+    ], 500);
 }

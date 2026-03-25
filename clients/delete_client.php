@@ -1,24 +1,20 @@
+// putting client into archieved state instead of deleting permanently
 <?php
-header("Content-Type: application/json; charset=UTF-8");
-header("Access-Control-Allow-Origin: *");
-header("Access-Control-Allow-Methods: POST, OPTIONS");
-header("Access-Control-Allow-Headers: Content-Type, Authorization");
 
-if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
-    http_response_code(200);
-    exit;
-}
+header('Content-Type: application/json');
 
 require_once __DIR__ . '/../config/response.php';
 require_once __DIR__ . '/../config/db.php';
 require_once __DIR__ . '/../auth/auth_required.php';
 require_once __DIR__ . '/../static_token.php';
+
 requireStaticToken();
+
 try {
     if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
         jsonResponse([
             "success" => false,
-            "message" => "Method not allowed"
+            "message" => "Method not allowed. Use POST."
         ], 405);
         exit;
     }
@@ -26,52 +22,53 @@ try {
     $authUser = requireAuth();
     $user_id = (int)$authUser->id;
 
-    $raw = file_get_contents("php://input");
-    $data = json_decode($raw, true);
+    $data = json_decode(file_get_contents("php://input"), true);
 
     if (!is_array($data)) {
-        $data = $_POST;
+        throw new Exception("Invalid JSON body.");
     }
 
-    $id = isset($data['id']) ? (int)$data['id'] : 0;
+    $id = (int)($data["id"] ?? 0);
 
     if ($id <= 0) {
-        jsonResponse([
-            "success" => false,
-            "message" => "Client ID is required"
-        ], 400);
+        throw new Exception("Client ID is required");
     }
 
     $conn = db();
 
-    $stmt = $conn->prepare("DELETE FROM clients WHERE id = ? AND user_id = ?");
-    if (!$stmt) {
-        throw new Exception("Failed to prepare delete statement");
+    $check = $conn->prepare("
+        SELECT id
+        FROM clients
+        WHERE id = ? AND user_id = ?
+        LIMIT 1
+    ");
+    $check->bind_param("ii", $id, $user_id);
+    $check->execute();
+    $result = $check->get_result();
+
+    if ($result->num_rows === 0) {
+        throw new Exception("Client not found or unauthorized");
     }
 
+    $check->close();
+
+    $stmt = $conn->prepare("
+        UPDATE clients
+        SET is_archived = 1,
+            archived_at = NOW()
+        WHERE id = ? AND user_id = ?
+    ");
     $stmt->bind_param("ii", $id, $user_id);
-
-    if (!$stmt->execute()) {
-        throw new Exception("Failed to delete client");
-    }
-
-    if ($stmt->affected_rows === 0) {
-        $stmt->close();
-        jsonResponse([
-            "success" => false,
-            "message" => "Client not found or access denied"
-        ], 404);
-    }
-
+    $stmt->execute();
     $stmt->close();
 
     jsonResponse([
         "success" => true,
-        "message" => "Client deleted successfully"
+        "message" => "Client archived successfully"
     ]);
 } catch (Throwable $e) {
     jsonResponse([
         "success" => false,
         "message" => $e->getMessage()
-    ], 500);
+    ], 400);
 }

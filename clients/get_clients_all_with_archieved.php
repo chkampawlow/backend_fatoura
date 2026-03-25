@@ -23,7 +23,7 @@ try {
     $stmt = $conn->prepare("
         SELECT id, type, name, email, phone, address, fiscalId, cin
         FROM clients
-        WHERE user_id = ? AND is_archived = 0
+        WHERE user_id = ?
         ORDER BY id DESC
     ");
 

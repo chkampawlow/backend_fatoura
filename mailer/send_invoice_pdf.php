@@ -29,13 +29,13 @@ try {
     $pdfBase64 = trim($data['pdf'] ?? '');
     $filename = trim($data['filename'] ?? 'invoice.pdf');
     $to = trim($data['email'] ?? '');
+    $language = trim($data['language'] ?? 'en');
 
     if ($pdfBase64 === '') {
         throw new Exception('Missing PDF data.');
     }
 
     if ($to === '') {
-        // fallback: send to logged-in user email
         $to = trim($authUser->email ?? '');
     }
 
@@ -53,37 +53,12 @@ try {
         $filename .= '.pdf';
     }
 
-    $tmpDir = __DIR__ . '/../tmp';
-
-    if (!is_dir($tmpDir)) {
-        if (!mkdir($tmpDir, 0775, true) && !is_dir($tmpDir)) {
-            throw new Exception('Unable to create temporary directory.');
-        }
-    }
-
-    if (!is_writable($tmpDir)) {
-        throw new Exception('Temporary directory is not writable.');
-    }
-
-    $finalTmpFile = $tmpDir . '/inv_pdf_' . uniqid('', true) . '.pdf';
-
-    if (file_put_contents($finalTmpFile, $pdfBinary) === false) {
-        throw new Exception('Unable to write temporary PDF file.');
-    }
-
-    try {
-        sendMailMessage(
-            $to,
-            'Your invoice PDF',
-            '<p>Please find your invoice attached.</p>',
-            $finalTmpFile,
-            $filename
-        );
-    } finally {
-        if (file_exists($finalTmpFile)) {
-            @unlink($finalTmpFile);
-        }
-    }
+    sendInvoicePdf(
+        $to,
+        $pdfBinary,
+        $filename,
+        $language
+    );
 
     jsonResponse([
         'success' => true,
@@ -93,5 +68,5 @@ try {
     jsonResponse([
         'success' => false,
         'message' => $e->getMessage()
-    ], 400);
+    ], 500);
 }
